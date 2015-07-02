@@ -46,3 +46,64 @@ if(!shouldLog) {
 cli.on('require', function(name) {
     gutil.log('Requiring external module', chalk.magenta(name));
 });
+
+cli.on('requireFail', function(name) {
+    gutil.log(chalk.red('Failed to load external module'), chalk.magenta(name));
+});
+
+cli.on('respawn', function(flags, child) {
+    var nodeFlags = chalk.magenta(flags.join(', '));
+    var pid = chalk.magenta(child.pid);
+    gutil.log('Node flags detected:', nodeFlags);
+    gutil.log('Respawned to PID:', pid);
+});
+
+cli.launch({
+    cwd: argv.cwd,
+    configPath: argv.gulpfile,
+    require: argv.require,
+    completion: argv.completion,
+}, handleArguments);
+
+// The actual logic
+
+// Wire up logging events
+function logEvents(gulpInst) {
+
+    // Total hack due to poor error management in orchectrator
+    gulpInst.on('err', function() {
+        failed = true;
+    });
+
+    gulpInst.on('task_start', function(e) {
+        // so when 5 tasks start at once it only logs one time with all 5
+        gutil.log('Starting', '\'' + chalk.cyan(e.task) + '\'...');
+    });
+
+    gulpInst.on('task_stop', function(e) {
+        var time = prettyTime(e.hrDuration);
+        gutil.log(
+            'Finished', '\'' + chalk.cyan(e.task) + '\'',
+            'after', chalk.magenta(time)
+        );
+    });
+
+    gulpInst.on('task_err', function(e) {
+        var msg = formatError(e);
+        var time = prettyTime(e.hrDuration);
+        gutil.log(
+            '\'' + chalk.cyan(e.task) + '\'',
+            chalk.red('errored after'),
+            chalk.magenta(time)
+        );
+        gutil.log(msg);
+    });
+
+    gulpInst.on('task_not_found', function(err) {
+        gutil.log(
+            chalk.red('\'' + err.task + '\' is not in your gulpfile')
+        );
+        gutil.log('please check the documentation for proper gulpfile formatting');
+        process.exit(1);
+    });
+}

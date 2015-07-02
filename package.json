@@ -1,0 +1,11 @@
+{
+    "file": [
+        "index.js",
+        "lib",
+        "bin",
+        "completion"
+    ],
+    "bin": {
+        "gulp": "./bin/gulp.js"
+    }
+}

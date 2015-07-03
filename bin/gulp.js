@@ -7,6 +7,7 @@ var completion = require('../lib/completion');
 var argv = require('minimist')(process.argv.slice(2));
 var gutil = require('gulp-util');
 var chalk = require('chalk');
+var tildify = require('tildify');
 
 // Set env var for ORIGINAL cwd
 // before anything touches it
@@ -66,6 +67,63 @@ cli.launch({
 }, handleArguments);
 
 // The actual logic
+function handleArguments(env) {
+    if(versionFlag && tasks.length === 0) {
+        gutil.log('CLI version', cliPackage.version);
+        if(env.modulePackage && typeof env.modulePackage.version !== 'undefined') {
+            gutil.log('Local version', env.modulePackage.version);
+        }
+        process.exit(0);
+    }
+
+    if(!env.modulePath) {
+        gutil.log(
+            chalk.red('Local gulp not found in'),
+            chalk.magenta(tildify(env.cwd))
+        );
+        gutil.log(chalk.red('Try running: npm install gulp'));
+        process.exit(1);
+    }
+
+    if(!env.configPath) {
+        gutil.log(chalk.red('No gulpfile found'));
+        process.exit(1);
+    }
+
+    // Check for semver difference between cli and local installation
+    if(semver.gt(cliPackage.version, env.modulePackage.version)) {
+        gutil.log(chalk.red('Warning: gulp version mismach:'));
+        gutil.log(chalk.red('Global gulp is', cliPackage.version));
+        gutil.log(chalk.red('Local gulp is', env.modulePackage.version));
+    }
+
+    // Chdir before Requiring gulpfile to make sure
+    // we let them chdir as needed
+    if(process.cwd() !== env.cwd) {
+        process.chdir(env.cwd);
+        gutil.log(
+            'Working directory change to',
+            chalk.magenta(tildify(env.cwd))
+        );
+    }
+
+    // This is what actually loads up the gulpfile
+    require(env.configPath);
+    gutil.log('Using gulpfile', chalk.magenta(tildify(env.configPath)));
+
+    var gulpInst = require(env.modulePath);
+    logEvents(gulpInst);
+
+    process.nextTick(function() {
+        if(simpleTasksFlag) {
+            return logTasksSimple(env, gulpInst);
+        }
+        if(tasksFlag) {
+            return logTasks(env, gulpInst);
+        }
+        gulpInst.start.apply(gulpInst, toRun);
+    });
+}
 
 // Wire up logging events
 function logEvents(gulpInst) {

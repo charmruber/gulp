@@ -14,7 +14,8 @@
         "v8flags": "^2.0.2",
         "minimist": "^1.1.0",
         "gulp-util": "^3.0.0",
-        "chalk": "^1.0.0"
+        "chalk": "^1.0.0",
+        "tildify": "^1.0.0"
     },
     "version": "1.0.0"
 }
